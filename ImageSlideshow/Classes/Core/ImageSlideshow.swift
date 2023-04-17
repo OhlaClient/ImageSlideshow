@@ -186,6 +186,9 @@ open class ImageSlideshow: UIView {
         }
     }
 
+    /// ScrollView Scroll Animation Duration
+    open var slideshowDuration: TimeInterval = 0.3
+
     /// Image change interval, zero stops the auto-scrolling
     open var slideshowInterval = 0.0 {
         didSet {
@@ -237,9 +240,6 @@ open class ImageSlideshow: UIView {
     fileprivate func initialize() {
         autoresizesSubviews = true
         clipsToBounds = true
-        if #available(iOS 13.0, *) {
-            backgroundColor = .systemBackground
-        }
 
         // scroll view configuration
         scrollView.frame = CGRect(x: 0, y: 0, width: frame.size.width, height: frame.size.height - 50.0)
@@ -415,7 +415,18 @@ open class ImageSlideshow: UIView {
      */
     open func setScrollViewPage(_ newScrollViewPage: Int, animated: Bool) {
         if scrollViewPage < scrollViewImages.count {
-            scrollView.scrollRectToVisible(CGRect(x: scrollView.frame.size.width * CGFloat(newScrollViewPage), y: 0, width: scrollView.frame.size.width, height: scrollView.frame.size.height), animated: animated)
+            if slideshowDuration > 0 {
+                UIView.animate(withDuration: slideshowDuration) {
+                    self.scrollView.scrollRectToVisible(CGRect(x: self.scrollView.frame.size.width * CGFloat(newScrollViewPage), y: 0, width: self.scrollView.frame.size.width, height: self.scrollView.frame.size.height), animated: false)
+                } completion: { _ in
+                    if newScrollViewPage == self.scrollViewImages.count - 1 {
+                        self.scrollView.scrollRectToVisible(CGRect(x: self.scrollView.frame.size.width, y: 0, width: self.scrollView.frame.size.width, height: self.scrollView.frame.size.height), animated: false)
+                        self.setCurrentPageForScrollViewPage(newScrollViewPage)
+                    }
+                 }
+            } else {
+                scrollView.scrollRectToVisible(CGRect(x: scrollView.frame.size.width * CGFloat(newScrollViewPage), y: 0, width: scrollView.frame.size.width, height: scrollView.frame.size.height), animated: animated)
+            }
             setCurrentPageForScrollViewPage(newScrollViewPage)
             if animated {
                 isAnimating = true
@@ -580,8 +591,7 @@ extension ImageSlideshow: UIScrollViewDelegate {
     open func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if circular && (scrollViewImages.count > 1) {
             let regularContentOffset = scrollView.frame.size.width * CGFloat(images.count)
-
-            if scrollView.contentOffset.x >= scrollView.frame.size.width * CGFloat(images.count + 1) {
+            if scrollView.contentOffset.x > scrollView.frame.size.width * CGFloat(images.count + 1) {
                 scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x - regularContentOffset, y: 0)
             } else if scrollView.contentOffset.x <= 0 {
                 scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x + regularContentOffset, y: 0)
@@ -592,6 +602,29 @@ extension ImageSlideshow: UIScrollViewDelegate {
         // when interacting with PageControl directly (#376).
         if scrollView.isDragging {
             pageIndicator?.page = currentPageForScrollViewPage(primaryVisiblePage)
+        }
+    }
+    
+    public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        /*
+          出现的问题：3张image，scrollImags就为5张，
+          当处于展示最后一张图片时，page = 3，此时手动滚动到下一张图片，展示为第一张图片，此时 page = 4(计时器重置)
+          当开启下一个时钟时，此时已知page = 4,nextPage = 5，但是实际上展示应该为第二张图片。
+          故此时将nextPage应为2。
+          但是直接设置为2，scrollView会回退到第2张，因为此时是第4张。
+          所以问题应该是scrollViewDidScroll逻辑有误。
+          拖拽停止后，重置 contentOffset
+        */
+        if decelerate {
+            let currentPage = scrollView.frame.size.width > 0 ? Int(scrollView.contentOffset.x / scrollView.frame.size.width) : 0
+            if currentPage == images.count {
+                let regularContentOffset = scrollView.frame.size.width * CGFloat(images.count)
+                if scrollView.contentOffset.x > scrollView.frame.size.width * CGFloat(images.count) {
+                    scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x - regularContentOffset, y: 0)
+                } else if scrollView.contentOffset.x <= 0 {
+                    scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x + regularContentOffset, y: 0)
+                }
+            }
         }
     }
 
