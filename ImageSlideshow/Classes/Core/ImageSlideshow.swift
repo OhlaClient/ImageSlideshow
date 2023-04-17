@@ -249,7 +249,7 @@ open class ImageSlideshow: UIView {
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.autoresizingMask = autoresizingMask
-        if UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft {
+        if UIView.appearance().semanticContentAttribute == .forceRightToLeft {
             scrollView.transform = CGAffineTransform(rotationAngle: CGFloat(Double.pi))
         }
 

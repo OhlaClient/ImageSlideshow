@@ -71,7 +71,7 @@ open class ImageSlideshowItem: UIScrollView, UIScrollViewDelegate {
 
         imageViewWrapper.clipsToBounds = true
         imageViewWrapper.isUserInteractionEnabled = true
-        if UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft {
+        if UIView.appearance().semanticContentAttribute == .forceRightToLeft {
             imageView.transform = CGAffineTransform(rotationAngle: CGFloat(Double.pi))
         }
 
